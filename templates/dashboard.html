@@ -1,0 +1,817 @@
+{% extends "base.html" %}
+
+{% block title %}Trading Terminal - StockAI{% endblock %}
+
+{% block content %}
+
+<!-- Top Live Ticker Summary Bar -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-8 col-sm-12">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            <h1 class="mb-0 fw-extrabold text-white" id="tickerNameText">{{ stock.name }}</h1>
+            <span class="fs-4 text-muted fw-bold" id="tickerSymbolText">({{ stock.symbol }})</span>
+            
+            <button class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2" id="watchlistToggle" style="border-radius: 20px;">
+                <i class="bi bi-star" id="watchlistStarIcon"></i>
+                <span id="watchlistToggleText">Pin to Watchlist</span>
+            </button>
+            <span class="badge bg-success rounded-pill d-flex align-items-center gap-1" style="font-size: 11px; padding: 6px 12px;">
+                <span class="spinner-grow spinner-grow-sm text-white" role="status" style="width: 8px; height: 8px;"></span> Live Updates Active
+            </span>
+        </div>
+        <div class="d-flex align-items-baseline gap-2 mt-2">
+            <h2 class="mb-0 fw-bold fs-1" id="livePriceHeader">${{ "{:,.2f}".format(stock.price) }}</h2>
+            <span class="fs-5 fw-semibold px-2 py-1 rounded" id="livePriceChangeBadge">
+                {% if stock.price_change >= 0 %}+{% endif %}{{ "{:,.2f}".format(stock.price_change) }} ({% if stock.pct_change >= 0 %}+{% endif %}{{ stock.pct_change }}%)
+            </span>
+        </div>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show border-0 shadow" role="alert" style="background-color: var(--color-danger-glow); color: var(--color-danger); border-radius: 12px;">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Main Trading Chart Area (Col-9) -->
+    <div class="col-lg-9 col-md-12">
+        
+        <!-- TradingView Candlestick & Volume Chart Card -->
+        <div class="card p-4 mb-4 border-0">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                <div class="timeframe-container">
+                    <button class="timeframe-btn" data-period="1d">1D</button>
+                    <button class="timeframe-btn" data-period="5d">5D</button>
+                    <button class="timeframe-btn" data-period="1mo">1M</button>
+                    <button class="timeframe-btn active" data-period="6mo">6M</button>
+                    <button class="timeframe-btn" data-period="1y">1Y</button>
+                    <button class="timeframe-btn" data-period="max">ALL</button>
+                </div>
+                
+                <!-- Chart Controls: Indicators Toggles & Buy/Sell Pricing -->
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div class="d-flex gap-2">
+                        <label class="btn btn-outline-secondary btn-sm border-secondary d-flex align-items-center gap-1" style="font-size: 11px; border-radius: 8px; color: var(--text-secondary);" for="toggleSma20">
+                            <input type="checkbox" id="toggleSma20" style="width: 12px; height: 12px; accent-color: var(--color-warning);"> SMA 20
+                        </label>
+                        <label class="btn btn-outline-secondary btn-sm border-secondary d-flex align-items-center gap-1" style="font-size: 11px; border-radius: 8px; color: var(--text-secondary);" for="toggleSma50">
+                            <input type="checkbox" id="toggleSma50" style="width: 12px; height: 12px; accent-color: var(--color-primary);"> SMA 50
+                        </label>
+                    </div>
+                    
+                    <div class="tradingview-actions">
+                        <div class="action-box sell">
+                            <span class="action-title">Sell</span>
+                            <span class="action-price" id="btnSellPrice">${{ "{:,.2f}".format(stock.price) }}</span>
+                        </div>
+                        <div class="action-box buy">
+                            <span class="action-title">Buy</span>
+                            <span class="action-price" id="btnBuyPrice">${{ "{:,.2f}".format(stock.price) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TradingView Lightweight Charts Mounting Point -->
+            <div id="tradingviewChart" style="height: 420px; width: 100%; border-radius: 10px; overflow: hidden; background-color: #0c101b;">
+                <!-- Loaded dynamically by Lightweight Charts -->
+            </div>
+        </div>
+
+        <!-- News Feed Widget -->
+        <div class="card p-4 border-0">
+            <h5 class="card-title fw-bold mb-4"><i class="bi bi-newspaper text-primary"></i> Market News Feed</h5>
+            <div class="row g-3" id="newsFeedContainer">
+                {% for item in stock.news %}
+                <div class="col-md-6 news-fade-in">
+                    <div class="p-3 rounded h-100" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-secondary" style="font-size: 10px;">{{ item.publisher }}</span>
+                        </div>
+                        <h6 class="mb-2">
+                            <a href="{{ item.link }}" target="_blank" class="text-white text-decoration-none hover-link fw-semibold" style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                {{ item.title }}
+                            </a>
+                        </h6>
+                        <small class="text-secondary" id="news-time-{{ loop.index }}"></small>
+                        <script>
+                            document.getElementById('news-time-{{ loop.index }}').innerText = 
+                                new Date({{ item.time }} * 1000).toLocaleDateString(undefined, {
+                                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                });
+                        </script>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Watchlist & Details Widget Panel (Col-3) -->
+    <div class="col-lg-3 col-md-12">
+        <!-- Search Ticker -->
+        <div class="card p-3 mb-3 border-0">
+            <h6 class="fw-bold text-white mb-2"><i class="bi bi-search"></i> Find Ticker</h6>
+            <form method="GET" action="/dashboard" class="d-flex gap-2">
+                <input type="text" class="form-control form-control-sm" name="symbol" placeholder="e.g. NVDA, BTC-USD" required style="text-transform: uppercase;">
+                <button type="submit" class="btn btn-sm btn-primary-gradient px-3"><i class="bi bi-arrow-right"></i></button>
+            </form>
+        </div>
+
+        <!-- Watchlist Sidebar Table -->
+        <div class="card p-3 mb-3 border-0">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold text-white mb-0"><i class="bi bi-bookmark-star text-warning"></i> Watchlist</h6>
+                <span class="badge bg-dark border border-secondary text-secondary font-monospace" id="watchlistCount" style="font-size: 10px;">0</span>
+            </div>
+            
+            <!-- Quick Add Watchlist input -->
+            <form id="watchlistAddForm" class="d-flex gap-1 mb-2">
+                <input type="text" id="watchlistAddInput" class="form-control form-control-sm" placeholder="Add Ticker" required style="text-transform: uppercase; font-size: 11px;">
+                <button type="submit" class="btn btn-sm btn-outline-light px-2 border-secondary" style="border-radius: 8px;"><i class="bi bi-plus-lg"></i></button>
+            </form>
+            <div id="watchlistAddError" class="text-danger mb-2" style="font-size: 10px; display: none;"></div>
+
+            <div class="watchlist-container">
+                <table class="watchlist-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th style="text-align: right;">Last</th>
+                            <th style="text-align: right;">Chg%</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlistTableBody">
+                        <!-- Populated by JavaScript with Group Dividers -->
+                    </tbody>
+                </table>
+                <p class="text-secondary text-center py-3 mb-0" id="emptyWatchlistText" style="font-size: 12px;">Your watchlist is empty.</p>
+            </div>
+        </div>
+
+        <!-- Active Symbol Details Sidebar -->
+        <div class="card p-3 border-0">
+            <h6 class="fw-bold text-white mb-2"><i class="bi bi-info-circle text-primary"></i> Market Stats</h6>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between py-1 border-bottom border-secondary" style="font-size: 12px;">
+                    <span class="text-secondary">P/E Ratio</span>
+                    <span class="fw-bold text-white" id="detailPe">{{ stock.pe_ratio }}</span>
+                </div>
+                <div class="d-flex justify-content-between py-1 border-bottom border-secondary" style="font-size: 12px;">
+                    <span class="text-secondary">Market Cap</span>
+                    <span class="fw-bold text-white" id="detailCap">{{ stock.market_cap }}</span>
+                </div>
+                <div class="d-flex justify-content-between py-1" style="font-size: 12px;">
+                    <span class="text-secondary">Volume</span>
+                    <span class="fw-bold text-white" id="detailVol">{{ "{:,}".format(stock.volume) }}</span>
+                </div>
+            </div>
+
+            <!-- Day's Range Indicator -->
+            <h6 class="fw-bold text-white mb-1" style="font-size: 13px;"><i class="bi bi-arrow-left-right text-success"></i> Day's Range</h6>
+            <div class="d-flex justify-content-between text-secondary" style="font-size: 10px;">
+                <span id="detailLow">${{ "{:,.2f}".format(stock.low) }}</span>
+                <span id="detailHigh">${{ "{:,.2f}".format(stock.high) }}</span>
+            </div>
+            <div class="range-slider-bar">
+                <div class="range-slider-pointer" id="dayRangePointer" style="left: 50%;"></div>
+            </div>
+
+            <!-- Historical Performance Table/Grid -->
+            <h6 class="fw-bold text-white mb-1 mt-3" style="font-size: 13px;"><i class="bi bi-speedometer2 text-info"></i> Performance</h6>
+            <div class="perf-grid">
+                <div class="perf-box">
+                    <span class="perf-label">1W</span>
+                    <span class="perf-value {% if stock.performance['1w'] >= 0 %}text-success{% else %}text-danger{% endif %}" id="perf-1w">
+                        {{ "+" if stock.performance['1w'] >= 0 }}{{ stock.performance['1w'] }}%
+                    </span>
+                </div>
+                <div class="perf-box">
+                    <span class="perf-label">1M</span>
+                    <span class="perf-value {% if stock.performance['1m'] >= 0 %}text-success{% else %}text-danger{% endif %}" id="perf-1m">
+                        {{ "+" if stock.performance['1m'] >= 0 }}{{ stock.performance['1m'] }}%
+                    </span>
+                </div>
+                <div class="perf-box">
+                    <span class="perf-label">3M</span>
+                    <span class="perf-value {% if stock.performance['3m'] >= 0 %}text-success{% else %}text-danger{% endif %}" id="perf-3m">
+                        {{ "+" if stock.performance['3m'] >= 0 }}{{ stock.performance['3m'] }}%
+                    </span>
+                </div>
+                <div class="perf-box">
+                    <span class="perf-label">6M</span>
+                    <span class="perf-value {% if stock.performance['6m'] >= 0 %}text-success{% else %}text-danger{% endif %}" id="perf-6m">
+                        {{ "+" if stock.performance['6m'] >= 0 }}{{ stock.performance['6m'] }}%
+                    </span>
+                </div>
+                <div class="perf-box">
+                    <span class="perf-label">1Y</span>
+                    <span class="perf-value {% if stock.performance['1y'] >= 0 %}text-success{% else %}text-danger{% endif %}" id="perf-1y">
+                        {{ "+" if stock.performance['1y'] >= 0 }}{{ stock.performance['1y'] }}%
+                    </span>
+                </div>
+                <div class="perf-box">
+                    <span class="perf-label">YTD</span>
+                    <span class="perf-value {% if stock.performance['ytd'] >= 0 %}text-success{% else %}text-danger{% endif %}" id="perf-ytd">
+                        {{ "+" if stock.performance['ytd'] >= 0 }}{{ stock.performance['ytd'] }}%
+                    </span>
+                </div>
+            </div>
+
+            <h6 class="fw-bold text-white mb-1 mt-3" style="font-size: 13px;"><i class="bi bi-file-text"></i> Business Summary</h6>
+            <p class="text-secondary mb-0" id="detailDesc" style="font-size: 11px; line-height: 1.5; text-align: justify;">
+                {{ stock.description }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Load TradingView Lightweight Charts Library (Pinned to Stable v4.1.1) -->
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+
+<script>
+// Trading Ticker Variables
+const currentSymbol = "{{ stock.symbol }}";
+const currentName = "{{ stock.name }}";
+let activePeriod = "6mo";
+let cachedNews = {{ stock.news|tojson|safe }};
+
+// Helper function to render news dynamically
+function renderNews(newsList, oldNewsList = []) {
+    const container = document.getElementById("newsFeedContainer");
+    if (!container) return;
+    
+    const oldTitles = oldNewsList.map(item => item.title);
+    
+    let html = '';
+    newsList.forEach(item => {
+        const isNew = oldNewsList.length > 0 && !oldTitles.includes(item.title);
+        const formattedDate = new Date(item.time * 1000).toLocaleDateString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        
+        const cardClass = isNew ? "p-3 rounded h-100 news-item-new" : "p-3 rounded h-100";
+        const newBadge = isNew ? `<span class="badge-new">New</span>` : '';
+        
+        html += `
+        <div class="col-md-6 news-fade-in">
+            <div class="${cardClass}" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-secondary" style="font-size: 10px;">${item.publisher}</span>
+                    ${newBadge}
+                </div>
+                <h6 class="mb-2">
+                    <a href="${item.link}" target="_blank" class="text-white text-decoration-none hover-link fw-semibold" style="line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        ${item.title}
+                    </a>
+                </h6>
+                <small class="text-secondary">${formattedDate}</small>
+            </div>
+        </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// Setup dynamic variables for indicators/prices
+let latestPrice = {{ stock.price }};
+let latestHigh = {{ stock.high }};
+let latestLow = {{ stock.low }};
+
+/* ========================================================
+   1. Initialize TradingView Lightweight Charts
+   ======================================================== */
+const chartContainer = document.getElementById("tradingviewChart");
+const chart = LightweightCharts.createChart(chartContainer, {
+    width: chartContainer.clientWidth,
+    height: 420,
+    layout: {
+        background: { type: 'solid', color: '#0c101b' },
+        textColor: '#94a3b8',
+        fontSize: 11,
+        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif"
+    },
+    grid: {
+        vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.03)' }
+    },
+    crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal,
+        vertLine: { color: '#3b82f6', labelBackgroundColor: '#1e293b' },
+        horzLine: { color: '#3b82f6', labelBackgroundColor: '#1e293b' }
+    },
+    rightPriceScale: {
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        textColor: '#94a3b8'
+    },
+    timeScale: {
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        timeVisible: true,
+        secondsVisible: false
+    }
+});
+
+// Resizing Listener
+window.addEventListener('resize', () => {
+    chart.resize(chartContainer.clientWidth, 420);
+});
+
+// Add Candlestick Series
+const candlestickSeries = chart.addCandlestickSeries({
+    upColor: '#10b981',
+    downColor: '#ef4444',
+    borderDownColor: '#ef4444',
+    borderUpColor: '#10b981',
+    wickDownColor: '#ef4444',
+    wickUpColor: '#10b981',
+    priceFormat: { type: 'price', precision: 2, minMove: 0.01 }
+});
+
+// Add Volume Series overlayed at the bottom
+const volumeSeries = chart.addHistogramSeries({
+    color: '#26a69a',
+    priceFormat: { type: 'volume' },
+    priceScaleId: '', // Overlay mode
+});
+
+// Configure Volume Scale overlay sizing
+chart.priceScale('').applyOptions({
+    scaleMargins: {
+        top: 0.75, // Volume occupies bottom 25% of chart
+        bottom: 0,
+    },
+});
+
+/* ========================================================
+   Moving Average Indicator Setup
+   ======================================================== */
+const sma20Series = chart.addLineSeries({
+    color: '#f59e0b',
+    lineWidth: 1.5,
+    priceLineVisible: false,
+    lastValueVisible: false,
+});
+const sma50Series = chart.addLineSeries({
+    color: '#8b5cf6',
+    lineWidth: 1.5,
+    priceLineVisible: false,
+    lastValueVisible: false,
+});
+
+// Set indicators hidden by default
+sma20Series.applyOptions({ visible: false });
+sma50Series.applyOptions({ visible: false });
+
+// Simple moving average calculator in JS
+function calculateSMA(data, count) {
+    let result = [];
+    for (let i = 0; i < data.length; i++) {
+        if (i < count - 1) {
+            continue;
+        }
+        let sum = 0;
+        for (let j = 0; j < count; j++) {
+            sum += data[i - j].close;
+        }
+        result.push({
+            time: data[i].time,
+            value: sum / count
+        });
+    }
+    return result;
+}
+
+// Bind SMA checkbox controls
+document.getElementById("toggleSma20").addEventListener("change", function() {
+    sma20Series.applyOptions({ visible: this.checked });
+});
+document.getElementById("toggleSma50").addEventListener("change", function() {
+    sma50Series.applyOptions({ visible: this.checked });
+});
+
+/* ========================================================
+   2. Fetch and Render Candlestick Chart Data
+   ======================================================== */
+let chartDataCache = [];
+
+function loadChartData(symbol, period) {
+    activePeriod = period;
+    const activePeriodEl = document.getElementById("activePeriodText");
+    if (activePeriodEl) {
+        activePeriodEl.innerText = period;
+    }
+    
+    fetch(`/api/history/${symbol}?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+            
+            chartDataCache = data;
+            
+            // Map candlesticks
+            const candles = data.map(item => ({
+                time: item.time,
+                open: item.open,
+                high: item.high,
+                low: item.low,
+                close: item.close
+            }));
+            
+            // Map volume histogram
+            const volumes = data.map(item => ({
+                time: item.time,
+                value: item.volume,
+                color: item.close >= item.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+            }));
+            
+            candlestickSeries.setData(candles);
+            volumeSeries.setData(volumes);
+            
+            // Calculate and set SMAs
+            const sma20Data = calculateSMA(candles, 20);
+            const sma50Data = calculateSMA(candles, 50);
+            sma20Series.setData(sma20Data);
+            sma50Series.setData(sma50Data);
+            
+            chart.timeScale().fitContent();
+        })
+        .catch(err => console.error("Error loading chart data: ", err));
+}
+
+// Initial Load
+loadChartData(currentSymbol, activePeriod);
+
+// Set Up Click Listeners for Timeframes
+document.querySelectorAll(".timeframe-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+        document.querySelectorAll(".timeframe-btn").forEach(b => b.classList.remove("active"));
+        this.classList.add("active");
+        const period = this.getAttribute("data-period");
+        loadChartData(currentSymbol, period);
+    });
+});
+
+/* ========================================================
+   3. Day Range Pointer Helper
+   ======================================================== */
+function updateDayRangePointer(price, low, high) {
+    const pointer = document.getElementById("dayRangePointer");
+    if (!pointer) return;
+    
+    let percentage = 50;
+    if (high > low) {
+        percentage = ((price - low) / (high - low)) * 100;
+        percentage = Math.max(0, Math.min(100, percentage)); // bound
+    }
+    pointer.style.left = `${percentage}%`;
+}
+updateDayRangePointer(latestPrice, latestLow, latestHigh);
+
+/* ========================================================
+   4. LocalStorage Grouped Watchlist Engine
+   ======================================================== */
+function getWatchlist() {
+    return JSON.parse(localStorage.getItem('stock_watchlist') || '[]');
+}
+
+function saveWatchlist(list) {
+    localStorage.setItem('stock_watchlist', JSON.stringify(list));
+}
+
+function renderWatchlist() {
+    const list = getWatchlist();
+    const tableBody = document.getElementById('watchlistTableBody');
+    const emptyText = document.getElementById('emptyWatchlistText');
+    const countBadge = document.getElementById('watchlistCount');
+    
+    tableBody.innerHTML = '';
+    countBadge.innerText = list.length;
+    
+    if (list.length === 0) {
+        emptyText.style.display = 'block';
+        return;
+    }
+    emptyText.style.display = 'none';
+    
+    // Categorize watchlisted items
+    const indices = [];
+    const stocks = [];
+    const crypto = [];
+    const others = [];
+    
+    list.forEach(item => {
+        const sym = item.symbol.toUpperCase();
+        if (sym.startsWith('^')) {
+            indices.push(item);
+        } else if (sym.endsWith('-USD') || sym.includes('USD') || sym.includes('BTC') || sym.includes('ETH')) {
+            crypto.push(item);
+        } else if (sym.includes('=')) {
+            others.push(item); // Forex / currency pairs
+        } else {
+            stocks.push(item);
+        }
+    });
+
+    // Helper to render a group section
+    function appendGroup(groupName, items) {
+        if (items.length === 0) return;
+        
+        // Group Header Row
+        const headerRow = document.createElement('tr');
+        headerRow.innerHTML = `<td colspan="4" class="watchlist-header-row">${groupName}</td>`;
+        tableBody.appendChild(headerRow);
+        
+        // Rows
+        items.forEach(item => {
+            const row = document.createElement('tr');
+            row.className = `watchlist-row ${item.symbol === currentSymbol ? 'active' : ''}`;
+            row.id = `watchlist-row-${item.symbol}`;
+            
+            row.onclick = function(e) {
+                if (!e.target.closest('.delete-watchlist-btn')) {
+                    window.location.href = `/dashboard?symbol=${item.symbol}`;
+                }
+            };
+            
+            const priceVal = item.price ? `$${parseFloat(item.price).toFixed(2)}` : 'Loading...';
+            const changeClass = item.change >= 0 ? 'text-success' : 'text-danger';
+            const sign = item.change >= 0 ? '+' : '';
+            const pctVal = item.pct !== undefined ? `${sign}${parseFloat(item.pct).toFixed(2)}%` : '';
+            
+            row.innerHTML = `
+                <td class="py-2"><span class="fw-bold text-white">${item.symbol}</span></td>
+                <td class="text-end py-2 font-monospace text-white watchlist-price-cell">${priceVal}</td>
+                <td class="text-end py-2 font-monospace ${changeClass} watchlist-pct-cell">${pctVal}</td>
+                <td class="text-center py-2" style="width: 30px;">
+                    <button class="btn btn-sm text-muted delete-watchlist-btn p-0 border-0" data-symbol="${item.symbol}">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Append Grouped watchlists
+    appendGroup("INDICES", indices);
+    appendGroup("STOCKS", stocks);
+    appendGroup("CRYPTOCURRENCY", crypto);
+    appendGroup("OTHERS / FOREX", others);
+
+    // Wire up delete buttons
+    tableBody.querySelectorAll('.delete-watchlist-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const sym = this.getAttribute('data-symbol');
+            removeFromWatchlist(sym);
+        });
+    });
+}
+
+function updateToggleButton() {
+    const list = getWatchlist();
+    const isPinned = list.some(item => item.symbol === currentSymbol);
+    const star = document.getElementById('watchlistStarIcon');
+    const text = document.getElementById('watchlistToggleText');
+    
+    if (isPinned) {
+        star.className = 'bi bi-star-fill text-warning';
+        text.innerText = 'Pinned to Watchlist';
+    } else {
+        star.className = 'bi bi-star';
+        text.innerText = 'Pin to Watchlist';
+    }
+}
+
+function toggleWatchlist() {
+    let list = getWatchlist();
+    const isPinned = list.some(item => item.symbol === currentSymbol);
+    
+    if (isPinned) {
+        list = list.filter(item => item.symbol !== currentSymbol);
+    } else {
+        list.push({ symbol: currentSymbol, name: currentName, price: latestPrice, change: 0, pct: 0 });
+    }
+    
+    saveWatchlist(list);
+    updateToggleButton();
+    renderWatchlist();
+}
+
+function removeFromWatchlist(symbol) {
+    let list = getWatchlist();
+    list = list.filter(item => item.symbol !== symbol);
+    saveWatchlist(list);
+    if (symbol === currentSymbol) {
+        updateToggleButton();
+    }
+    renderWatchlist();
+}
+
+// Watchlist Add Ticker Form Handler
+document.getElementById("watchlistAddForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const input = document.getElementById("watchlistAddInput");
+    const errorDiv = document.getElementById("watchlistAddError");
+    const ticker = input.value.toUpperCase().trim();
+    
+    errorDiv.style.display = "none";
+    if (!ticker) return;
+    
+    fetch(`/api/validate?symbol=${ticker}`)
+        .then(res => res.json())
+        .then(res => {
+            if (res.valid) {
+                let list = getWatchlist();
+                if (list.some(item => item.symbol === res.symbol)) {
+                    errorDiv.innerText = "Ticker already watchlisted.";
+                    errorDiv.style.display = "block";
+                    return;
+                }
+                list.push({
+                    symbol: res.symbol,
+                    name: res.name,
+                    price: res.price,
+                    change: 0,
+                    pct: 0
+                });
+                saveWatchlist(list);
+                renderWatchlist();
+                input.value = "";
+            } else {
+                errorDiv.innerText = res.error || "Invalid Ticker.";
+                errorDiv.style.display = "block";
+            }
+        })
+        .catch(err => {
+            errorDiv.innerText = "Error validating ticker.";
+            errorDiv.style.display = "block";
+        });
+});
+
+document.getElementById('watchlistToggle').addEventListener('click', toggleWatchlist);
+
+/* ========================================================
+   5. Dynamic Polling & Live Blinking Updates
+   ======================================================== */
+
+function flashElement(el, flashClass) {
+    el.classList.remove('flash-up', 'flash-down');
+    void el.offsetWidth; 
+    el.classList.add(flashClass);
+}
+
+function updatePerformanceGrid(perf) {
+    const intervals = ['1w', '1m', '3m', '6m', '1y', 'ytd'];
+    intervals.forEach(interval => {
+        const el = document.getElementById(`perf-${interval}`);
+        if (!el) return;
+        
+        const val = perf[interval];
+        const sign = val >= 0 ? '+' : '';
+        el.innerText = `${sign}${parseFloat(val).toFixed(2)}%`;
+        
+        el.className = `perf-value ${val >= 0 ? 'text-success' : 'text-danger'}`;
+    });
+}
+
+function pollLiveUpdates() {
+    // A. Update Active Ticker Info
+    fetch(`/api/live-price/${currentSymbol}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) return;
+            
+            const prevPrice = latestPrice;
+            latestPrice = data.price;
+            latestHigh = data.high;
+            latestLow = data.low;
+            
+            // Update Headers & Buy/Sell Badges
+            const priceEl = document.getElementById("livePriceHeader");
+            priceEl.innerText = `$${parseFloat(data.price).toFixed(2)}`;
+            
+            document.getElementById("btnSellPrice").innerText = `$${parseFloat(data.price).toFixed(2)}`;
+            document.getElementById("btnBuyPrice").innerText = `$${parseFloat(data.price).toFixed(2)}`;
+            
+            const badge = document.getElementById("livePriceChangeBadge");
+            const sign = data.price_change >= 0 ? '+' : '';
+            badge.innerText = `${sign}${parseFloat(data.price_change).toFixed(2)} (${sign}${data.pct_change}%)`;
+            badge.className = "fs-5 fw-semibold px-2 py-1 rounded " + (data.price_change >= 0 ? 'badge-trend-up' : 'badge-trend-down');
+            
+            if (prevPrice !== data.price) {
+                const flashClass = data.price > prevPrice ? 'flash-up' : 'flash-down';
+                flashElement(priceEl, flashClass);
+            }
+            
+            // Update Stats Widget
+            document.getElementById("detailVol").innerText = parseInt(data.volume).toLocaleString();
+            document.getElementById("detailLow").innerText = `$${parseFloat(data.low).toFixed(2)}`;
+            document.getElementById("detailHigh").innerText = `$${parseFloat(data.high).toFixed(2)}`;
+            updateDayRangePointer(latestPrice, latestLow, latestHigh);
+            
+            // Live-update candles
+            if (chartDataCache.length > 0) {
+                const lastIdx = chartDataCache.length - 1;
+                const lastItem = chartDataCache[lastIdx];
+                const newHigh = Math.max(lastItem.high, data.price);
+                const newLow = Math.min(lastItem.low, data.price);
+                
+                const updatedCandle = {
+                    time: lastItem.time,
+                    open: lastItem.open,
+                    high: newHigh,
+                    low: newLow,
+                    close: data.price
+                };
+                
+                candlestickSeries.update(updatedCandle);
+                
+                // Recalculate SMAs dynamically with the updated closing price
+                const candles = chartDataCache.map((item, idx) => {
+                    if (idx === lastIdx) return updatedCandle;
+                    return item;
+                });
+                const sma20Data = calculateSMA(candles, 20);
+                const sma50Data = calculateSMA(candles, 50);
+                sma20Series.setData(sma20Data);
+                sma50Series.setData(sma50Data);
+            }
+            
+            // Live-update news feed
+            if (data.news && Array.isArray(data.news)) {
+                const newsChanged = JSON.stringify(data.news) !== JSON.stringify(cachedNews);
+                if (newsChanged) {
+                    const oldNews = cachedNews;
+                    cachedNews = data.news;
+                    renderNews(cachedNews, oldNews);
+                }
+            }
+        })
+        .catch(err => console.error("Live Price Poll Error: ", err));
+
+    // B. Batch Update Watchlist Sidebar Tickers
+    const list = getWatchlist();
+    if (list.length === 0) return;
+    
+    const symbolsParam = list.map(item => item.symbol).join(",");
+    fetch(`/api/batch-prices?symbols=${symbolsParam}`)
+        .then(res => res.json())
+        .then(batchData => {
+            let updatedList = getWatchlist();
+            let changed = false;
+            
+            batchData.forEach(tick => {
+                const rowEl = document.getElementById(`watchlist-row-${tick.symbol}`);
+                if (!rowEl) return;
+                
+                const match = updatedList.find(x => x.symbol === tick.symbol);
+                if (match) {
+                    const prevPrice = match.price;
+                    
+                    if (prevPrice !== tick.price) {
+                        match.price = tick.price;
+                        match.change = tick.change;
+                        match.pct = tick.pct;
+                        changed = true;
+                        
+                        const priceCell = rowEl.querySelector(".watchlist-price-cell");
+                        const pctCell = rowEl.querySelector(".watchlist-pct-cell");
+                        
+                        priceCell.innerText = `$${parseFloat(tick.price).toFixed(2)}`;
+                        
+                        const sign = tick.change >= 0 ? '+' : '';
+                        pctCell.innerText = `${sign}${parseFloat(tick.pct).toFixed(2)}%`;
+                        pctCell.className = `text-end py-2 font-monospace watchlist-pct-cell ${tick.change >= 0 ? 'text-success' : 'text-danger'}`;
+                        
+                        const flashClass = tick.price > prevPrice ? 'flash-up' : 'flash-down';
+                        flashElement(priceCell, flashClass);
+                    }
+                }
+            });
+            
+            if (changed) {
+                saveWatchlist(updatedList);
+            }
+        })
+        .catch(err => console.error("Batch Watchlist Poll Error: ", err));
+}
+
+// Start polling every 5 seconds
+const pollingInterval = setInterval(pollLiveUpdates, 5000);
+
+// Initialize Watchlist on load
+document.addEventListener('DOMContentLoaded', () => {
+    updateToggleButton();
+    renderWatchlist();
+});
+</script>
+
+{% endblock %}

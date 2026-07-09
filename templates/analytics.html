@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - StockAI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7 col-sm-12">
+        <h1 class="mb-0 fw-extrabold text-white"><i class="bi bi-bar-chart-line"></i> Advanced Analytics</h1>
+        <p class="text-secondary mt-1">Overlay technical studies on price trends and inspect backtest diagnostics.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show border-0 shadow" role="alert" style="background-color: var(--color-danger-glow); color: var(--color-danger); border-radius: 12px;">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Left Column (Chart, Studies and Performance Cards) -->
+    <div class="col-lg-8">
+        <!-- Interactive Technical Chart -->
+        <div class="card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h5 class="card-title mb-0 fw-bold"><i class="bi bi-graph-up text-primary"></i> 6-Month Chart Studies</h5>
+                <span class="text-secondary" style="font-size: 13px;">Historical Prices & Technical Indicators</span>
+            </div>
+            
+            <!-- Controls panel for Indicators -->
+            <div class="row g-2 mb-4">
+                <div class="col-6 col-sm-4">
+                    <label class="checkbox-card" for="toggleSma20">
+                        <input type="checkbox" id="toggleSma20">
+                        <span>SMA 20 (Orange)</span>
+                    </label>
+                </div>
+                <div class="col-6 col-sm-4">
+                    <label class="checkbox-card" for="toggleSma50">
+                        <input type="checkbox" id="toggleSma50">
+                        <span>SMA 50 (Purple)</span>
+                    </label>
+                </div>
+                <div class="col-12 col-sm-4">
+                    <label class="checkbox-card" for="toggleRsi">
+                        <input type="checkbox" id="toggleRsi">
+                        <span>RSI 14 (Green, Right Axis)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div style="position: relative; height: 350px;">
+                <canvas id="analyticalChart"></canvas>
+            </div>
+        </div>
+
+        <!-- ML Performance Comparison Dashboard -->
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card p-4 border-0 h-100" style="background: radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 70%), var(--bg-card);">
+                    <h6 class="text-info fw-bold mb-3"><i class="bi bi-activity"></i> Linear Regression Metrics</h6>
+                    <hr class="border-secondary my-2">
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Mean Absolute Error (MAE)</span>
+                        <span class="fw-bold text-white">${{ model_results.linear_regression.mae }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Root Mean Squared Error (RMSE)</span>
+                        <span class="fw-bold text-white">${{ model_results.linear_regression.rmse }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="text-secondary">Coefficient of Determination (R²)</span>
+                        <span class="fw-bold text-white">{{ model_results.linear_regression.r2 }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card p-4 border-0 h-100" style="background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 70%), var(--bg-card);">
+                    <h6 class="text-success fw-bold mb-3"><i class="bi bi-tree"></i> Random Forest Metrics</h6>
+                    <hr class="border-secondary my-2">
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Mean Absolute Error (MAE)</span>
+                        <span class="fw-bold text-white">${{ model_results.random_forest.mae }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Root Mean Squared Error (RMSE)</span>
+                        <span class="fw-bold text-white">${{ model_results.random_forest.rmse }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="text-secondary">Coefficient of Determination (R²)</span>
+                        <span class="fw-bold text-white">{{ model_results.random_forest.r2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column (Search & Selector Ticker) -->
+    <div class="col-lg-4">
+        <!-- Asset Search Widget -->
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-search"></i> Select Asset</h5>
+            <form method="GET" action="/analytics" class="d-flex gap-2">
+                <input type="text" class="form-control" name="symbol" value="{{ selected_symbol }}" placeholder="TICKER" style="text-transform: uppercase;">
+                <button type="submit" class="btn btn-primary-gradient"><i class="bi bi-arrow-right"></i></button>
+            </form>
+        </div>
+
+        <!-- Quick Ticker Picker -->
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge"></i> Quick Analytics</h5>
+            <div class="list-group list-group-flush">
+                {% for symbol, name in symbols.items() %}
+                <a href="/analytics?symbol={{ symbol }}" 
+                   class="list-group-item list-group-item-action bg-transparent border-secondary text-secondary py-3 d-flex justify-content-between align-items-center {% if selected_symbol == symbol %}text-white fw-bold{% endif %}">
+                    <span>{{ name }}</span>
+                    <span class="badge bg-secondary font-monospace">{{ symbol }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-mortarboard"></i> Understanding Studies</h5>
+            <p class="text-secondary mb-2" style="font-size: 13px;">
+                <strong>Simple Moving Average (SMA)</strong>: Helps smooth out price action by filtering out short-term noise. Crosses can signify trend reversals.
+            </p>
+            <p class="text-secondary mb-0" style="font-size: 13px;">
+                <strong>Relative Strength Index (RSI)</strong>: A momentum oscillator that measures speed and change of price movements. Values above 70 indicate overbought conditions, while values below 30 suggest oversold conditions.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Chart Overlay Script -->
+<script>
+const dates = {{ dates | tojson }};
+const prices = {{ prices | tojson }};
+const sma20 = {{ indicators.sma20 | tojson }};
+const sma50 = {{ indicators.sma50 | tojson }};
+const rsi = {{ indicators.rsi | tojson }};
+
+const ctx = document.getElementById("analyticalChart");
+if (ctx && dates.length > 0) {
+    const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: dates,
+            datasets: [
+                {
+                    label: "Close Price",
+                    data: prices,
+                    borderWidth: 2,
+                    borderColor: "#3b82f6",
+                    backgroundColor: "transparent",
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    yAxisID: "yPrice"
+                },
+                {
+                    label: "SMA 20",
+                    data: sma20,
+                    borderWidth: 1.5,
+                    borderColor: "#f59e0b",
+                    backgroundColor: "transparent",
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    hidden: true,
+                    yAxisID: "yPrice"
+                },
+                {
+                    label: "SMA 50",
+                    data: sma50,
+                    borderWidth: 1.5,
+                    borderColor: "#8b5cf6",
+                    backgroundColor: "transparent",
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    hidden: true,
+                    yAxisID: "yPrice"
+                },
+                {
+                    label: "RSI 14",
+                    data: rsi,
+                    borderWidth: 1.5,
+                    borderColor: "#10b981",
+                    backgroundColor: "transparent",
+                    fill: false,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    hidden: true,
+                    yAxisID: "yRsi"
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#94a3b8' }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: '#1f2937',
+                    titleColor: '#f3f4f6',
+                    bodyColor: '#e5e7eb',
+                    borderColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxTicksLimit: 10, color: '#94a3b8' }
+                },
+                yPrice: {
+                    position: "left",
+                    title: { display: true, text: "Price (USD)", color: "#94a3b8" },
+                    grid: { color: "rgba(255, 255, 255, 0.03)" },
+                    ticks: { color: "#94a3b8" }
+                },
+                yRsi: {
+                    position: "right",
+                    title: { display: true, text: "RSI Scale", color: "#94a3b8" },
+                    min: 0,
+                    max: 100,
+                    display: false,  // Hidden until enabled by toggle
+                    grid: { display: false },
+                    ticks: { color: "#94a3b8" }
+                }
+            }
+        }
+    });
+
+    // Control toggles mapping
+    document.getElementById("toggleSma20").addEventListener("change", function() {
+        chart.setDatasetVisibility(1, this.checked);
+        chart.update();
+    });
+    
+    document.getElementById("toggleSma50").addEventListener("change", function() {
+        chart.setDatasetVisibility(2, this.checked);
+        chart.update();
+    });
+
+    document.getElementById("toggleRsi").addEventListener("change", function() {
+        chart.setDatasetVisibility(3, this.checked);
+        chart.options.scales.yRsi.display = this.checked;
+        chart.update();
+    });
+}
+</script>
+
+{% endblock %}

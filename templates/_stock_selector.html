@@ -1,0 +1,13 @@
+<form method="GET" class="mb-4">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <select class="form-select" name="symbol" onchange="this.form.submit()">
+                {% for symbol, name in symbols.items() %}
+                <option value="{{ symbol }}" {% if selected_symbol == symbol %}selected{% endif %}>
+                    {{ name }} ({{ symbol }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</form>

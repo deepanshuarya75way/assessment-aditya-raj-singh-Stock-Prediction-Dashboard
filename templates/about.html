@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}About - StockAI{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7 col-sm-12">
+        <h1 class="mb-0 fw-extrabold text-white"><i class="bi bi-info-circle"></i> About This Project</h1>
+        <p class="text-secondary mt-1">Project objective, technologies utilized, and details about the forecasting models.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Main Content -->
+    <div class="col-lg-8">
+        <!-- Overview -->
+        <div class="card p-4 mb-4 border-0">
+            <h3 class="fw-bold text-white mb-3">📈 Advanced Stock Prediction Dashboard</h3>
+            <p class="text-secondary mb-0">
+                This project is a professional-grade web application built in Python using Flask that fetches live financial market data, tracks indices, calculates technical momentum indicators, and trains machine learning models to forecast the next closing price of any asset ticker.
+            </p>
+        </div>
+
+        <!-- ML Details -->
+        <div class="card p-4 mb-4 border-0">
+            <h3 class="fw-bold text-white mb-3"><i class="bi bi-cpu text-primary"></i> Machine Learning Architecture</h3>
+            <p class="text-secondary mb-3">
+                The forecasting module trains and validates two distinct supervised learning algorithms on 1 year of historical market features (Open, High, Low, Close, Volume):
+            </p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                        <h6 class="text-white fw-bold"><i class="bi bi-activity text-info"></i> Linear Regression</h6>
+                        <p class="text-secondary mb-0" style="font-size: 13px;">
+                            Fits a linear combination of features to discover baseline trends in pricing, serving as an optimal benchmark.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                        <h6 class="text-white fw-bold"><i class="bi bi-tree text-success"></i> Random Forest Regressor</h6>
+                        <p class="text-secondary mb-0" style="font-size: 13px;">
+                            An ensemble decision tree model that captures non-linear relationships and interactions between volumes and price limits.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-secondary mt-3 mb-0" style="font-size: 13px;">
+                <strong>Chronological Split:</strong> To comply with financial machine learning best practices and prevent target leakage, the dataset is split chronologically (80% training, 20% validation). Models are fit on training data alone and verified against out-of-sample data.
+            </p>
+        </div>
+
+        <!-- Objectives -->
+        <div class="card p-4 border-0">
+            <h3 class="fw-bold text-white mb-3"><i class="bi bi-bullseye text-warning"></i> Project Objectives</h3>
+            <p class="text-secondary mb-0">
+                The objective of StockAI is to demonstrate full-stack proficiency in data science pipelines, real-time data ingestion, interactive browser storage APIs, and high-fidelity, responsive user interfaces.
+            </p>
+        </div>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="col-lg-4">
+        <!-- Tech Stack -->
+        <div class="card p-4 mb-4 border-0">
+            <h5 class="fw-bold mb-3"><i class="bi bi-boxes"></i> Technology Stack</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">Python 3</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">Flask</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">yfinance</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">Pandas</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">NumPy</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">Scikit-learn</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">Chart.js</span>
+                <span class="badge bg-dark border border-secondary text-secondary py-2 px-3">Bootstrap 5</span>
+            </div>
+        </div>
+
+        <!-- Features Built -->
+        <div class="card p-4 border-0">
+            <h5 class="fw-bold mb-3"><i class="bi bi-patch-check-fill text-success"></i> Core Capabilities</h5>
+            <ul class="text-secondary ps-3 mb-0" style="font-size: 13px; line-height: 1.8;">
+                <li>Search support for any global stock or crypto symbol.</li>
+                <li>Interactive, state-preserving Watchlist.</li>
+                <li>Yahoo Finance live news feed.</li>
+                <li>Dynamic Technical Studies (SMA, RSI overlays).</li>
+                <li>Multi-model prediction backtesting comparison.</li>
+                <li>Fully responsive, glassmorphic dark theme.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}AI Predictions - StockAI{% endblock %}
+
+{% block content %}
+
+<!-- Header and Controls -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7 col-sm-12">
+        <h1 class="mb-0 fw-extrabold text-white"><i class="bi bi-cpu"></i> AI Price Prediction</h1>
+        <p class="text-secondary mt-1">Train and run machine learning models to forecast the next closing price.</p>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger alert-dismissible fade show border-0 shadow" role="alert" style="background-color: var(--color-danger-glow); color: var(--color-danger); border-radius: 12px;">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- Left Column (Predictions & Metrics) -->
+    <div class="col-lg-8">
+        <!-- Model Toggle Tabs -->
+        <div class="card p-3 mb-4 border-0">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="text-white fw-bold"><i class="bi bi-gear-wide-connected text-primary"></i> Selected Forecasting Model:</span>
+                <div class="btn-group" role="group">
+                    <a href="/prediction?symbol={{ stock.symbol }}&model=linear_regression" 
+                       class="btn btn-sm px-3 {% if selected_model == 'linear_regression' %}btn-primary-gradient{% else %}btn-outline-secondary text-secondary border-secondary{% endif %}" style="border-radius: 8px 0 0 8px;">
+                        Linear Regression
+                    </a>
+                    <a href="/prediction?symbol={{ stock.symbol }}&model=random_forest" 
+                       class="btn btn-sm px-3 {% if selected_model == 'random_forest' %}btn-primary-gradient{% else %}btn-outline-secondary text-secondary border-secondary{% endif %}" style="border-radius: 0 8px 8px 0;">
+                        Random Forest
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prediction Stats Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card p-4 text-center border-0 h-100">
+                    <span class="text-secondary fw-semibold">Current Close Price</span>
+                    <h2 class="mt-3 mb-0 fw-bold text-white">${{ "{:,.2f}".format(stock.price) }}</h2>
+                    <small class="text-secondary mt-1">Latest market Close</small>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card p-4 text-center border-0 h-100" style="background: radial-gradient(circle at top, var(--color-primary-glow), transparent 75%), var(--bg-card);">
+                    <span class="text-secondary fw-semibold">Predicted Next Close</span>
+                    <h2 class="mt-3 mb-0 fw-bold text-primary">${{ "{:,.2f}".format(predicted_price) }}</h2>
+                    <small class="text-secondary mt-1">Tomorrow's forecast</small>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card signal-gauge {{ badge_class }} h-100 border-0">
+                    <span class="text-secondary fw-semibold">AI Recommendation</span>
+                    <h2 class="mt-3 mb-0 fw-bold text-white">{{ signal }}</h2>
+                    <small class="text-secondary mt-1">
+                        {% if prediction_difference >= 0 %}
+                        +${{ "{:,.2f}".format(prediction_difference) }} (+{{ prediction_pct }}%)
+                        {% else %}
+                        -${{ "{:,.2f}".format(prediction_difference|abs) }} ({{ prediction_pct }}%)
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparative Predictions Analysis -->
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-sliders2 text-primary"></i> Side-by-Side Model Comparison</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-borderless align-middle mb-0" style="--bs-table-bg: transparent;">
+                    <thead>
+                        <tr class="border-bottom border-secondary">
+                            <th>Algorithm</th>
+                            <th class="text-center">Tomorrow's Forecast</th>
+                            <th class="text-center">Projected Change</th>
+                            <th class="text-center">MAE</th>
+                            <th class="text-center">RMSE</th>
+                            <th class="text-center">R² Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, val in model_results.items() %}
+                        <tr class="{% if selected_model == key %}table-active rounded-pill{% endif %}">
+                            <td class="fw-bold text-white py-3">
+                                {% if key == 'linear_regression' %}
+                                <i class="bi bi-activity text-info"></i> Linear Regression
+                                {% else %}
+                                <i class="bi bi-tree text-success"></i> Random Forest
+                                {% endif %}
+                                {% if selected_model == key %}<span class="badge bg-primary ms-2" style="font-size: 9px;">Active</span>{% endif %}
+                            </td>
+                            <td class="text-center py-3 fw-bold text-white">${{ "{:,.2f}".format(val.predicted_price) }}</td>
+                            <td class="text-center py-3">
+                                {% set diff = val.predicted_price - stock.price %}
+                                {% set pct = (diff / stock.price) * 100 %}
+                                <span class="{% if diff >= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                                    {{ "+" if diff >= 0 }}{{ "{:,.2f}".format(diff) }} ({{ "{:,.2f}".format(pct) }}%)
+                                </span>
+                            </td>
+                            <td class="text-center py-3 text-secondary">{{ val.mae }}</td>
+                            <td class="text-center py-3 text-secondary">{{ val.rmse }}</td>
+                            <td class="text-center py-3 text-secondary">{{ val.r2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Model Explanation / Info -->
+        <div class="card p-4">
+            <h5 class="fw-bold mb-2"><i class="bi bi-shield-exclamation text-warning"></i> Forecasting Disclaimer & Information</h5>
+            <hr class="border-secondary my-2">
+            <p class="text-secondary mb-3" style="font-size: 14px;">
+                The AI recommendations are calculated based on the percent difference between the current Close price and tomorrow's forecasted price:
+            </p>
+            <ul class="text-secondary" style="font-size: 13px;">
+                <li><strong class="text-success">Strong Buy</strong>: Forecasted increase is greater than 1.5%</li>
+                <li><strong class="text-success">Buy</strong>: Forecasted increase is between 0.2% and 1.5%</li>
+                <li><strong class="text-warning">Hold</strong>: Forecasted change is within ±0.2%</li>
+                <li><strong class="text-danger">Sell</strong>: Forecasted decrease is between -0.2% and -1.5%</li>
+                <li><strong class="text-danger">Strong Sell</strong>: Forecasted decrease is greater than -1.5%</li>
+            </ul>
+            <p class="text-muted mb-0" style="font-size: 12px;">
+                * Backtest results (MAE, RMSE, R²) represent performance calculated on a temporal 20% validation split. Past performance does not guarantee future results. This tool is purely educational and does not constitute financial advice.
+            </p>
+        </div>
+    </div>
+
+    <!-- Right Column (Navigation & Search Ticker) -->
+    <div class="col-lg-4">
+        <!-- Search Ticker -->
+        <div class="card p-4 mb-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-search"></i> Select Asset</h5>
+            <form method="GET" action="/prediction" class="d-flex gap-2">
+                <input type="text" class="form-control" name="symbol" value="{{ stock.symbol }}" placeholder="TICKER" style="text-transform: uppercase;">
+                <input type="hidden" name="model" value="{{ selected_model }}">
+                <button type="submit" class="btn btn-primary-gradient"><i class="bi bi-arrow-right"></i></button>
+            </form>
+        </div>
+
+        <!-- Quick Tickers dropdown list -->
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-lightning-charge"></i> Quick Predictions</h5>
+            <div class="list-group list-group-flush">
+                {% for symbol, name in symbols.items() %}
+                <a href="/prediction?symbol={{ symbol }}&model={{ selected_model }}" 
+                   class="list-group-item list-group-item-action bg-transparent border-secondary text-secondary py-3 d-flex justify-content-between align-items-center {% if selected_symbol == symbol %}text-white fw-bold{% endif %}">
+                    <span>{{ name }}</span>
+                    <span class="badge bg-secondary font-monospace">{{ symbol }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

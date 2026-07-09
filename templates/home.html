@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Home - StockAI{% endblock %}
+
+{% block content %}
+
+<!-- Live Market Overview Header -->
+<div class="row mb-5">
+    <div class="col-12">
+        <h5 class="text-secondary mb-3"><i class="bi bi-clock-history"></i> Real-Time Indices</h5>
+        <div class="row g-3">
+            {% for name, index in indices.items() %}
+            <div class="col-md-6 col-xl-3">
+                <div class="card p-3 shadow-sm border-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-secondary fw-semibold">{{ name }}</span>
+                        {% if index.change >= 0 %}
+                        <span class="badge badge-trend-up rounded-pill"><i class="bi bi-caret-up-fill"></i> +{{ index.pct }}%</span>
+                        {% else %}
+                        <span class="badge badge-trend-down rounded-pill"><i class="bi bi-caret-down-fill"></i> {{ index.pct }}%</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mt-2">
+                        <h3 class="mb-0 fw-bold">${{ "{:,.2f}".format(index.price) }}</h3>
+                        <span class="fs-6 {% if index.change >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ "+" if index.change >= 0 }}{{ "{:,.2f}".format(index.change) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Hero Call to Action -->
+<div class="hero-glow-card text-center mb-5">
+    <h1 class="display-4 fw-extrabold text-white mb-3">
+        Next-Generation Stock Prediction
+    </h1>
+    <p class="lead text-secondary mx-auto mb-4" style="max-width: 700px;">
+        Combine the power of machine learning, technical indicators, and real-time market data to make smarter, data-driven decisions.
+    </p>
+    <div class="d-flex justify-content-center gap-3">
+        <a href="/dashboard" class="btn btn-primary-gradient px-4 py-3">
+            <i class="bi bi-speedometer2"></i> Launch Dashboard
+        </a>
+        <a href="/about" class="btn btn-outline-light px-4 py-3 border-secondary" style="border-radius: 12px;">
+            <i class="bi bi-info-circle"></i> Learn More
+        </a>
+    </div>
+</div>
+
+<!-- Platform Feature Blocks -->
+<div class="row g-4 mt-2">
+    <div class="col-lg-4">
+        <div class="card h-100 p-4">
+            <div class="fs-1 text-primary mb-3">
+                <i class="bi bi-graph-up"></i>
+            </div>
+            <h3 class="fw-bold">📊 Live Analytics</h3>
+            <p class="text-secondary mb-0">
+                Track and visualize real-time stock and cryptocurrency movements. Search any ticker globally and inspect interactive charts.
+            </p>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card h-100 p-4">
+            <div class="fs-1 text-success mb-3">
+                <i class="bi bi-cpu"></i>
+            </div>
+            <h3 class="fw-bold">🤖 Multi-Model ML</h3>
+            <p class="text-secondary mb-0">
+                Train and compare multiple machine learning models (Linear Regression vs Random Forest) using temporal, leakage-free historical splits.
+            </p>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card h-100 p-4">
+            <div class="fs-1 text-warning mb-3">
+                <i class="bi bi-activity"></i>
+            </div>
+            <h3 class="fw-bold">📈 Tech Indicators</h3>
+            <p class="text-secondary mb-0">
+                Overlay moving averages (SMA20, SMA50) and Relative Strength Index (RSI) directly on price histories to spot trends and momentum.
+            </p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
